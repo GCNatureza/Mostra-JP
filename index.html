@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Mostra Científica — Colégio João Paulo I</title>
+<meta name="description" content="Avaliação dos trabalhos da Mostra Científica do Colégio João Paulo I.">
+<style>
+  html, body { margin: 0; padding: 0; background: #F2F5F1; }
+  #raiz { min-height: 100vh; }
+  .carregando { font-family: system-ui, sans-serif; color: #5B7178;
+    text-align: center; padding: 60px 20px; font-size: 14px; }
+</style>
+</head>
+<body>
+  <div id="raiz"><p class="carregando">Carregando o sistema de avaliação…</p></div>
+  <script>
+    // se algo falhar ao carregar, mostra o motivo em vez de uma página em branco
+    window.addEventListener('error', function (e) {
+      var r = document.getElementById('raiz');
+      if (r && r.querySelector('.carregando')) {
+        r.innerHTML =
+          '<p class="carregando">Erro ao carregar o site:<br><b>' +
+          (e.message || 'falha desconhecida') +
+          '</b><br><br>Recarregue a página. Se persistir, avise a coordenação.</p>';
+      }
+    });
+  </script>
+  <script src="config.js?v=2"></script>
+  <script src="app.js?v=2"></script>
+</body>
+</html>
