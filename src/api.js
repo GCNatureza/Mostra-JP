@@ -38,6 +38,10 @@ export const api = {
   // sorteia os trabalhos de apresentação de cada avaliador cadastrado,
   // respeitando sede, área e séries; devolve o pacote atualizado + avisos
   distribuirApresentacao: () => chamar("distribuirApresentacao", {}),
+
+  // grava os prazos (prazoPre, prazoProjeto, inicioApres, fimApres) usados
+  // pelo contador de cada aba de avaliação
+  salvarConfig: (config) => chamar("salvarConfig", { config }),
 };
 
 /* preferência local (nome selecionado), guardada só no navegador do professor */

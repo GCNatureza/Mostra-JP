@@ -287,6 +287,13 @@ const ETAPAS = {
 };
 const ORDEM_ETAPAS = ["pre", "projeto", "apres"];
 
+// texto entre parênteses ao lado do botão de nota zero, específico de cada etapa
+const MOTIVO_ZERO = {
+  pre: "pré-projeto não entregue",
+  projeto: "projeto não entregue",
+  apres: "grupo ausente ou não apresentado",
+};
+
 // dados de exemplo — troque pelos trabalhos e avaliadores reais na planilha,
 // depois de rodar a instalação. O número já vem com o prefixo da sede (H/P)
 // só para não colidir entre as duas unidades; a aba que conta de verdade é a
@@ -319,8 +326,12 @@ const n2 = (x) =>
     ? "—"
     : Number(x).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// um critério pode estar: sem resposta (undefined), num dos 4 níveis (0-3),
+// ou marcado como "zero" — o grupo não preencheu aquela seção do trabalho
+const valorCriterio = (c, v) => (v === "zero" || v === undefined ? 0 : c.valores[v]);
+
 const somaNotas = (criterios, notas) =>
-  criterios.reduce((t, c) => t + (notas[c.id] !== undefined ? c.valores[notas[c.id]] : 0), 0);
+  criterios.reduce((t, c) => t + valorCriterio(c, notas[c.id]), 0);
 
 const maxFicha = (criterios) => criterios.reduce((t, c) => t + c.valores[3], 0);
 
@@ -344,7 +355,93 @@ const mesmoNome = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().
 
 const ordenaPtBr = (a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base", numeric: true });
 
+/* --------------------- prazos e contador (Relogio) --------------------- */
+
+const pad2 = (n) => String(n).padStart(2, "0");
+
+const formatarDataHora = (d) =>
+  d.toLocaleDateString("pt-BR") + " " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+
+// "AAAA-MM-DD" (prazo de entrega) -> Date às 23:59:59 daquele dia, hora local
+function prazoData(strData) {
+  if (!strData) return null;
+  const d = new Date(strData + "T23:59:59");
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// "AAAA-MM-DDTHH:mm" (datetime-local) -> Date, hora local
+function dataHoraLocal(str) {
+  if (!str) return null;
+  const d = new Date(str);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatarContagem(ms) {
+  const totalMin = Math.max(0, Math.round(ms / 60000));
+  const dias = Math.floor(totalMin / (60 * 24));
+  const horas = Math.floor((totalMin % (60 * 24)) / 60);
+  const minutos = totalMin % 60;
+  if (dias > 0) return dias + "d " + horas + "h " + minutos + "min";
+  return horas + "h " + minutos + "min";
+}
+
+// decide o que o contador de uma etapa deve mostrar, a partir dos prazos
+// cadastrados no painel "Prazos" da aba Resultados
+function situacaoPrazo(config, etapaId, agora) {
+  if (etapaId === "pre" || etapaId === "projeto") {
+    const alvo = prazoData(etapaId === "pre" ? config.prazoPre : config.prazoProjeto);
+    if (!alvo) return { semPrazo: true };
+    if (agora >= alvo) return { encerrado: true, alvo, rotulo: "Prazo encerrado em" };
+    return { alvo, rotulo: "Prazo termina em" };
+  }
+  if (etapaId === "apres") {
+    const inicio = dataHoraLocal(config.inicioApres);
+    const fim = dataHoraLocal(config.fimApres);
+    if (!inicio && !fim) return { semPrazo: true };
+    if (fim && agora >= fim) return { encerrado: true, alvo: fim, rotulo: "Apresentação encerrada em" };
+    if (inicio && agora < inicio) return { alvo: inicio, rotulo: "Apresentação começa em" };
+    if (fim) return { alvo: fim, rotulo: "Termina em" };
+    return { semPrazo: true };
+  }
+  return { semPrazo: true };
+}
+
+// relógio fixo no canto inferior direito, com a data/hora atual e a
+// contagem regressiva do prazo da etapa em exibição — atualiza sozinho
+function Relogio({ config, etapa }) {
+  const [agora, setAgora] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setAgora(new Date()), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  const s = situacaoPrazo(config, etapa, agora);
+  const restante = s.alvo ? s.alvo.getTime() - agora.getTime() : null;
+  const urgente = restante !== null && restante > 0 && restante < 60 * 60 * 1000;
+
+  return (
+    <div className="pt-relogio">
+      <span className="pt-relogio-agora">{formatarDataHora(agora)}</span>
+      {s.semPrazo && (
+        <span className="pt-relogio-contagem fraco">Prazo ainda não definido pela coordenação</span>
+      )}
+      {s.alvo && s.encerrado && (
+        <span className="pt-relogio-contagem encerrado">
+          {s.rotulo} {formatarDataHora(s.alvo)}
+        </span>
+      )}
+      {s.alvo && !s.encerrado && (
+        <span className={"pt-relogio-contagem" + (urgente ? " urgente" : "")}>
+          {s.rotulo}: {formatarContagem(restante)}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /* ================================ app ================================ */
+
+const CONFIG_VAZIA = { prazoPre: "", prazoProjeto: "", inicioApres: "", fimApres: "" };
 
 export default function MostraJoaoPaulo() {
   const [aba, setAba] = useState("hig"); // hig | pdb | res
@@ -353,6 +450,7 @@ export default function MostraJoaoPaulo() {
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [avaliadores, setAvaliadores] = useState([]);
   const [avaliador, setAvaliador] = useState("");
+  const [config, setConfig] = useState(CONFIG_VAZIA);
   const [carregando, setCarregando] = useState(true);
   const [aviso, setAviso] = useState(null);
   const [erroRede, setErroRede] = useState(null);
@@ -364,6 +462,7 @@ export default function MostraJoaoPaulo() {
       setTrabalhos(d.trabalhos && d.trabalhos.length ? d.trabalhos : TRABALHOS_EXEMPLO);
       setAvaliadores(d.avaliadores || []);
       setAvaliacoes(d.avaliacoes || []);
+      setConfig(d.config || CONFIG_VAZIA);
       setErroRede(null);
     } catch (e) {
       setErroRede(
@@ -373,6 +472,17 @@ export default function MostraJoaoPaulo() {
       );
     }
     setCarregando(false);
+  }
+
+  // grava os prazos usados pelo contador de cada aba de avaliação
+  async function salvarConfig(novaConfig) {
+    try {
+      const r = await api.salvarConfig(novaConfig);
+      setConfig(r.config || novaConfig);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   useEffect(() => {
@@ -491,9 +601,11 @@ export default function MostraJoaoPaulo() {
             trabalhos={trabalhos}
             avaliacoes={avaliacoes}
             avaliadores={avaliadores}
+            config={config}
             onAtualizar={() => recarregar(true)}
             onApagar={apagarAvaliacao}
             onDistribuir={distribuirApresentacao}
+            onSalvarConfig={salvarConfig}
           />
         ) : (
           <Ficha
@@ -509,6 +621,8 @@ export default function MostraJoaoPaulo() {
           />
         )}
       </main>
+
+      {!carregando && aba !== "res" && <Relogio config={config} etapa={etapa} />}
 
       <footer className="pt-rodape">
         Colégio João Paulo I · {EVENTO.nome} · uso interno dos avaliadores
@@ -626,7 +740,7 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
           <span>{n2(zerado ? 0 : total)}</span>
           <em>de {n2(maximo)}</em>
         </div>
-        {zerado && <p className="pt-zero-msg">Nota zerada (entrega parcial ou ausência).</p>}
+        {zerado && <p className="pt-zero-msg">Nota zerada ({MOTIVO_ZERO[etapa.id]}).</p>}
         {!zerado && destaque && <p className="pt-destaque-msg">Indicado para destaque da Mostra.</p>}
         <button className="pt-btn" onClick={limpar}>
           Avaliar outro trabalho
@@ -654,17 +768,23 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
         {zerado ? (
           <div className="pt-rev-bloco">
             <span className="pt-rotulo">Nota desta etapa</span>
-            <p className="pt-zero-msg">0,00 — nota zerada pelo avaliador (entrega parcial ou ausência).</p>
+            <p className="pt-zero-msg">0,00 — nota zerada pelo avaliador ({MOTIVO_ZERO[etapa.id]}).</p>
           </div>
         ) : (
           <ul className="pt-revisao">
-            {criterios.map((c) => (
-              <li key={c.id}>
-                <span className="pt-rev-nome">{c.nome}</span>
-                <span className={"pt-nivel n" + notas[c.id]}>{NIVEIS[notas[c.id]]}</span>
-                <span className="pt-rev-nota">{n2(c.valores[notas[c.id]])}</span>
-              </li>
-            ))}
+            {criterios.map((c) => {
+              const v = notas[c.id];
+              const itemZerado = v === "zero";
+              return (
+                <li key={c.id}>
+                  <span className="pt-rev-nome">{c.nome}</span>
+                  <span className={itemZerado ? "pt-nivel zero" : "pt-nivel n" + v}>
+                    {itemZerado ? "Zerado" : NIVEIS[v]}
+                  </span>
+                  <span className="pt-rev-nota">{n2(valorCriterio(c, v))}</span>
+                </li>
+              );
+            })}
             <li className="pt-rev-total">
               <span className="pt-rev-nome">Total da ficha</span>
               <span />
@@ -813,7 +933,7 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
             checked={zerado}
             onChange={(e) => setZerado(e.target.checked)}
           />
-          <span>Atribuir nota zero nesta etapa (entrega parcial ou ausência)</span>
+          <span>Atribuir nota zero nesta etapa ({MOTIVO_ZERO[etapa.id]})</span>
         </label>
         {zerado && (
           <p className="pt-legenda">
@@ -832,7 +952,7 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
               <h3>{c.nome}</h3>
               <span className="pt-max">máx. {n2(c.valores[3])}</span>
             </header>
-            <div className="pt-niveis">
+            <div className={"pt-niveis" + (notas[c.id] === "zero" ? " pt-desabilitado" : "")}>
               {NIVEIS.map((nome, k) => (
                 <button
                   key={nome}
@@ -852,6 +972,21 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
                 </button>
               ))}
             </div>
+            <label className="pt-zero-item-opcao">
+              <input
+                type="checkbox"
+                checked={notas[c.id] === "zero"}
+                onChange={(e) =>
+                  setNotas((s) => {
+                    const novo = { ...s };
+                    if (e.target.checked) novo[c.id] = "zero";
+                    else delete novo[c.id];
+                    return novo;
+                  })
+                }
+              />
+              <span>O grupo não preencheu esta seção — zerar este critério (0,00)</span>
+            </label>
           </section>
         ))}
       </div>
@@ -933,16 +1068,32 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
 
 /* ============================= resultados ============================= */
 
-function Resultados({ trabalhos, avaliacoes, avaliadores, onAtualizar, onApagar, onDistribuir }) {
+function Resultados({
+  trabalhos,
+  avaliacoes,
+  avaliadores,
+  config,
+  onAtualizar,
+  onApagar,
+  onDistribuir,
+  onSalvarConfig,
+}) {
   const [codigo, setCodigo] = useState("");
   const [liberado, setLiberado] = useState(false);
   const [aberto, setAberto] = useState(null);
   const [regra, setRegra] = useState("unanime");
   const [filtroSede, setFiltroSede] = useState("todas");
-  const [painel, setPainel] = useState(null); // null | "trabalhos" | "avaliadores"
+  const [painel, setPainel] = useState(null); // null | "trabalhos" | "avaliadores" | "prazos"
   const [confirmandoDistribuicao, setConfirmandoDistribuicao] = useState(false);
   const [distribuindo, setDistribuindo] = useState(false);
   const [avisosDistribuicao, setAvisosDistribuicao] = useState(null);
+  const [rascunhoPrazos, setRascunhoPrazos] = useState(config);
+  const [salvandoPrazos, setSalvandoPrazos] = useState(false);
+  const [avisoPrazos, setAvisoPrazos] = useState("");
+
+  useEffect(() => {
+    setRascunhoPrazos(config);
+  }, [config]);
 
   async function executarDistribuicao() {
     setDistribuindo(true);
@@ -950,6 +1101,14 @@ function Resultados({ trabalhos, avaliacoes, avaliadores, onAtualizar, onApagar,
     setDistribuindo(false);
     setConfirmandoDistribuicao(false);
     setAvisosDistribuicao(r.avisos || []);
+  }
+
+  async function salvarPrazos() {
+    setSalvandoPrazos(true);
+    setAvisoPrazos("");
+    const ok = await onSalvarConfig(rascunhoPrazos);
+    setSalvandoPrazos(false);
+    setAvisoPrazos(ok ? "Prazos salvos." : "Não foi possível salvar. Tente de novo.");
   }
 
   const linhas = useMemo(() => {
@@ -1091,6 +1250,12 @@ function Resultados({ trabalhos, avaliacoes, avaliadores, onAtualizar, onApagar,
             onClick={() => setPainel(painel === "avaliadores" ? null : "avaliadores")}
           >
             Avaliadores
+          </button>
+          <button
+            className={"pt-btn fino" + (painel === "prazos" ? " ligado" : "")}
+            onClick={() => setPainel(painel === "prazos" ? null : "prazos")}
+          >
+            Prazos
           </button>
           {!confirmandoDistribuicao ? (
             <button className="pt-btn fino" onClick={() => setConfirmandoDistribuicao(true)}>
@@ -1248,6 +1413,69 @@ function Resultados({ trabalhos, avaliacoes, avaliadores, onAtualizar, onApagar,
         </div>
       )}
 
+      {painel === "prazos" && (
+        <div className="pt-cadastro">
+          <p className="pt-legenda">
+            Esses prazos aparecem para os avaliadores num contador, no canto inferior direito de
+            cada aba de avaliação — assim ninguém perde a data de entrega. O pré-projeto e o
+            projeto (versão final) valem até as 23:59 do dia escolhido; a apresentação usa data e
+            horário de início e término, por ser um evento ao vivo.
+          </p>
+          <div className="pt-prazos-grade">
+            <label className="pt-campo">
+              <span className="pt-rotulo">Prazo — Pré-projeto (até 23:59)</span>
+              <input
+                type="date"
+                className="pt-entrada"
+                value={rascunhoPrazos.prazoPre || ""}
+                onChange={(e) =>
+                  setRascunhoPrazos((s) => ({ ...s, prazoPre: e.target.value }))
+                }
+              />
+            </label>
+            <label className="pt-campo">
+              <span className="pt-rotulo">Prazo — Projeto, versão final (até 23:59)</span>
+              <input
+                type="date"
+                className="pt-entrada"
+                value={rascunhoPrazos.prazoProjeto || ""}
+                onChange={(e) =>
+                  setRascunhoPrazos((s) => ({ ...s, prazoProjeto: e.target.value }))
+                }
+              />
+            </label>
+            <label className="pt-campo">
+              <span className="pt-rotulo">Apresentação — início</span>
+              <input
+                type="datetime-local"
+                className="pt-entrada"
+                value={rascunhoPrazos.inicioApres || ""}
+                onChange={(e) =>
+                  setRascunhoPrazos((s) => ({ ...s, inicioApres: e.target.value }))
+                }
+              />
+            </label>
+            <label className="pt-campo">
+              <span className="pt-rotulo">Apresentação — término</span>
+              <input
+                type="datetime-local"
+                className="pt-entrada"
+                value={rascunhoPrazos.fimApres || ""}
+                onChange={(e) =>
+                  setRascunhoPrazos((s) => ({ ...s, fimApres: e.target.value }))
+                }
+              />
+            </label>
+          </div>
+          <div className="pt-prazos-acoes">
+            <button className="pt-btn fino" onClick={salvarPrazos} disabled={salvandoPrazos}>
+              {salvandoPrazos ? "Salvando…" : "Salvar prazos"}
+            </button>
+            {avisoPrazos && <span className="pt-legenda" style={{ margin: 0 }}>{avisoPrazos}</span>}
+          </div>
+        </div>
+      )}
+
       {premiados.length > 0 && (
         <div className="pt-premios">
           <span className="pt-rotulo">Destaques com consenso dos avaliadores</span>
@@ -1368,16 +1596,24 @@ function Detalhe({ linha, onApagar }) {
               </thead>
               <tbody>
                 {etapa.criterios.map((c) => {
-                  const vals = dados.lista.map((a) =>
-                    a.zerado || a.notas[c.id] === undefined ? null : c.valores[a.notas[c.id]]
-                  );
+                  // zero da ficha inteira: critério não conta na média (o
+                  // avaliador não chegou a avaliar nada); zero só deste
+                  // critério: conta como 0,00, é uma nota de verdade
+                  const vals = dados.lista.map((a) => {
+                    if (a.zerado || a.notas[c.id] === undefined) return null;
+                    return a.notas[c.id] === "zero" ? 0 : c.valores[a.notas[c.id]];
+                  });
                   const validos = vals.filter((v) => v !== null);
                   return (
                     <tr key={c.id}>
                       <td>{c.nome}</td>
                       {dados.lista.map((a, i) => (
                         <td key={a.id} className="dir mono">
-                          {a.zerado ? <span className="pt-zero-mini">zerado</span> : n2(vals[i])}
+                          {a.zerado || a.notas[c.id] === "zero" ? (
+                            <span className="pt-zero-mini">zerado</span>
+                          ) : (
+                            n2(vals[i])
+                          )}
                         </td>
                       ))}
                       <td className="dir mono forte">{n2(media(validos))}</td>
@@ -1492,6 +1728,9 @@ const CSS = `
   padding:12px 16px;margin-bottom:18px}
 .pt-zero-opcao{display:flex;align-items:center;gap:9px;font-weight:700;color:#7C1D14;cursor:pointer}
 .pt-zero-opcao input{width:17px;height:17px;accent-color:var(--erro);cursor:pointer}
+.pt-zero-item-opcao{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;
+  color:var(--texto2);cursor:pointer}
+.pt-zero-item-opcao input{width:15px;height:15px;accent-color:var(--erro);cursor:pointer;flex:none}
 .pt-zero-caixa .pt-legenda{margin:8px 0 0}
 .pt-zero-msg{color:var(--erro);font-weight:700}
 .pt-zero-mini{color:var(--erro);font-weight:600;font-size:11px}
@@ -1572,6 +1811,7 @@ const CSS = `
 .pt-nivel.n1{background:#F6F1DC;color:#7A6A0F}
 .pt-nivel.n2{background:var(--azul-cl);color:var(--azul)}
 .pt-nivel.n3{background:var(--verde-cl);color:#4C5E15}
+.pt-nivel.zero{background:#FBEAE8;color:var(--erro)}
 .pt-rev-bloco{margin-bottom:14px}
 .pt-rev-bloco p{margin:4px 0 0;font-size:14px;white-space:pre-wrap}
 .pt-acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
@@ -1657,6 +1897,20 @@ const CSS = `
 .pt-rodape{max-width:900px;margin:20px auto 0;padding:0 14px;text-align:center;
   font-size:11px;color:var(--texto2)}
 
+.pt-relogio{position:fixed;right:16px;bottom:92px;z-index:40;background:var(--azul-esc);
+  color:#fff;border-radius:10px;padding:8px 14px;font-size:12px;line-height:1.5;
+  display:flex;flex-direction:column;gap:1px;box-shadow:0 4px 16px rgba(0,20,26,.25);
+  max-width:230px;pointer-events:none}
+.pt-relogio-agora{font-weight:700;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.pt-relogio-contagem{color:#BFDCE5}
+.pt-relogio-contagem.urgente{color:#FFD3CC;font-weight:700}
+.pt-relogio-contagem.encerrado{color:#FFB4AC;font-weight:700}
+.pt-relogio-contagem.fraco{opacity:.8;font-style:italic}
+
+.pt-prazos-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:12px;margin:12px 0}
+.pt-prazos-acoes{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+
 @media (max-width:760px){
   .pt-niveis{grid-template-columns:1fr 1fr}
   .pt-cabecalho-ficha{grid-template-columns:1fr}
@@ -1673,6 +1927,7 @@ const CSS = `
   .pt-h2{font-size:20px}
   .pt-evento{border-left:none;padding-left:0}
   .pt-logo{height:34px}
+  .pt-relogio{left:14px;right:14px;max-width:none;bottom:162px}
 }
 @media (prefers-reduced-motion:reduce){.pt *{transition:none!important}}
 `;
