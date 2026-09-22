@@ -209,76 +209,118 @@ const FICHA_PROJETO = [
   },
 ];
 
-// ficha da apresentação e banner — igual ao modelo original (nenhum critério
-// novo foi enviado para esta etapa); ficha vale 1,00
+// ficha da apresentação e banner — redesenhada do zero para separar dois
+// tipos de julgamento que antes ficavam misturados no mesmo critério: se um
+// elemento está presente (checklist, quase binário) e quão bom é esse
+// elemento (julgamento de qualidade). Os 4 primeiros critérios (grupo
+// "banner") avaliam o banner; os 4 últimos (grupo "apresentacao") avaliam a
+// fala. O campo "grupo" também controla a divisão visual da ficha (título de
+// seção e cor de fundo diferente para cada bloco). Originalidade e
+// criatividade entraram em "Expressão, comunicação e originalidade",
+// comparando a forma de apresentar com a de outros trabalhos da mesma área.
+// Ficha vale 1,00
 const FICHA_APRES = [
   {
     id: "a1",
-    nome: "Postura e seriedade",
-    valores: [0.03, 0.05, 0.07, 0.1],
+    grupo: "banner",
+    nome: "Elementos essenciais do banner",
+    valores: [0.04, 0.08, 0.11, 0.15],
     desc: [
-      "O grupo se ausenta do trabalho por longos períodos, usa linguagem informal e demonstra pouco comprometimento com a Mostra.",
-      "Parte do grupo permanece junto ao trabalho; a postura oscila entre momentos de atenção e de dispersão.",
-      "O grupo permanece junto ao trabalho e recebe o público adequadamente, com pequenos lapsos de formalidade.",
-      "Todos os integrantes permanecem junto ao trabalho durante toda a Mostra, utilizam linguagem formal e se portam de maneira profissional.",
+      "Três ou mais dos elementos essenciais (título, introdução, objetivos, metodologia, resultados, conclusão) estão ausentes do banner.",
+      "Um ou dois elementos essenciais estão ausentes, ou aparecem misturados sem indicação clara de onde um termina e outro começa.",
+      "Todos os seis elementos essenciais estão presentes e identificáveis, mas um ou dois aparecem fora da ordem esperada ou muito resumidos.",
+      "Todos os seis elementos essenciais estão presentes, claramente identificados (com título ou destaque visual) e na ordem esperada.",
     ],
   },
   {
     id: "a2",
-    nome: "Embasamento científico e caráter investigatório",
-    valores: [0.08, 0.15, 0.22, 0.3],
+    grupo: "banner",
+    nome: "Qualidade do conteúdo científico",
+    valores: [0.05, 0.1, 0.15, 0.2],
     desc: [
-      "O trabalho não se apoia em teorias ou métodos reconhecidos; o grupo não sabe explicar a origem das informações apresentadas.",
-      "Há referência a conceitos científicos, mas de forma superficial; o planejamento da investigação não fica evidente.",
-      "O trabalho se apoia em teorias e métodos adequados e o grupo descreve as etapas da investigação, com lacunas em alguns conceitos.",
-      "O trabalho está fundamentado em teorias, modelos ou métodos reconhecidos. O grupo demonstra ter planejado e organizado a investigação e domina os conceitos que sustentam o projeto.",
+      "A metodologia não permite entender como a pesquisa foi feita, os resultados não são sustentados por dados ou teoria, e a conclusão não decorre dos resultados apresentados.",
+      "A metodologia é descrita de forma superficial, os resultados aparecem sem embasamento claro em teorias ou métodos reconhecidos, e a conclusão só parcialmente decorre dos resultados.",
+      "A metodologia descreve como a pesquisa foi feita, com pequenas lacunas; os resultados são majoritariamente sustentados por dados ou teoria; a conclusão decorre dos resultados, com pequenas imprecisões.",
+      "A metodologia descreve com clareza como a pesquisa foi feita; os resultados são sustentados por dados ou teoria reconhecida; a conclusão decorre diretamente dos resultados apresentados e responde à pergunta de pesquisa.",
     ],
   },
   {
     id: "a3",
-    nome: "Originalidade e criatividade",
+    grupo: "banner",
+    nome: "Organização visual e clareza da escrita",
     valores: [0.03, 0.05, 0.07, 0.1],
     desc: [
-      "Reprodução de um trabalho pronto, sem contribuição própria do grupo.",
-      "Tema ou abordagem comuns, com pequenas adaptações feitas pelo grupo.",
-      "Há escolhas próprias no tema, nos materiais ou na forma de apresentar, ainda que pontuais.",
-      "Abordagem criativa e original no uso de materiais, na escolha do tema ou na forma de apresentação. O grupo foi além do óbvio na elaboração do projeto.",
+      "O texto é longo e denso, sem hierarquia visual clara; a linguagem é inadequada ao público da Mostra; não há imagens ou gráficos, ou eles não têm relação com o texto.",
+      "A organização visual ou a linguagem atrapalham parcialmente a leitura; imagens ou gráficos estão presentes, mas sem propósito claro ou pouco integrados ao texto.",
+      "O banner é organizado e a linguagem é clara na maior parte do texto; imagens e gráficos têm propósito e ajudam a entender o trabalho, com pequenos problemas de layout.",
+      "O banner tem hierarquia visual clara (títulos, texto e imagens bem distribuídos), a linguagem é clara e adequada ao público da Mostra, e imagens ou gráficos têm propósito evidente e ajudam efetivamente a compreender o trabalho.",
     ],
   },
   {
     id: "a4",
-    nome: "Qualidade dos recursos expositivos",
-    valores: [0.03, 0.05, 0.07, 0.1],
+    grupo: "banner",
+    nome: "Referências",
+    valores: [0.02, 0.03, 0.04, 0.05],
     desc: [
-      "Banner ou materiais ausentes, ilegíveis ou desorganizados; atrapalham a compreensão do trabalho.",
-      "Recursos presentes, mas poluídos, com excesso de texto ou erros que dificultam a leitura.",
-      "Recursos organizados e legíveis, com pequenos problemas de layout ou de hierarquia da informação.",
-      "Banner, experimento, slides ou outros materiais apresentam visual agradável, organização clara e auxiliam efetivamente a compreensão do trabalho.",
+      "As referências estão ausentes ou não seguem a norma ABNT.",
+      "As referências seguem parcialmente a norma ABNT, com várias inconsistências.",
+      "As referências seguem a ABNT, com pequenas inconsistências entre as citações no texto e a lista final.",
+      "As referências seguem rigorosamente a norma ABNT, e somente as fontes citadas no banner aparecem na lista.",
     ],
   },
   {
     id: "a5",
-    nome: "Completude e profundidade",
+    grupo: "apresentacao",
+    nome: "Cobertura dos elementos da pesquisa na fala",
     valores: [0.03, 0.05, 0.07, 0.1],
     desc: [
-      "A apresentação omite partes essenciais; não é possível entender o que foi investigado nem a que o grupo chegou.",
-      "Apresenta o tema e alguma etapa da pesquisa, mas deixa de fora resultados ou conclusões.",
-      "Contempla introdução, metodologia, resultados e conclusões, com aprofundamento desigual entre as partes.",
-      "Nenhum aspecto importante é omitido. Introdução, metodologia, resultados e conclusões aparecem de forma articulada e coerente.",
+      "Dois ou mais elementos (problema de pesquisa, metodologia, resultados, conclusão) não foram mencionados na fala.",
+      "Um desses elementos não foi mencionado, ou apareceu de forma tão breve que não ficou compreensível.",
+      "Todos os quatro elementos foram mencionados na fala, mas com desenvolvimento desigual entre eles.",
+      "Todos os quatro elementos foram apresentados oralmente de forma clara e com desenvolvimento equilibrado entre eles.",
     ],
   },
   {
     id: "a6",
-    nome: "Clareza e comunicação oral",
-    valores: [0.08, 0.15, 0.22, 0.3],
+    grupo: "apresentacao",
+    nome: "Domínio do conteúdo",
+    valores: [0.05, 0.1, 0.15, 0.2],
     desc: [
-      "A explicação é lida diretamente do banner ou de anotações; o grupo não responde às perguntas dos avaliadores.",
-      "A fala depende muito do apoio escrito e usa termos não explicados; as respostas às perguntas são hesitantes ou incompletas.",
-      "A explicação é compreensível e pouco dependente do banner; o grupo responde às perguntas, com imprecisões pontuais.",
-      "A apresentação é compreensível para qualquer público, com linguagem acessível e sem leitura do banner. O grupo responde às perguntas com segurança e precisão.",
+      "A fala é lida diretamente do banner ou de anotações; o grupo não consegue explicar partes do próprio trabalho quando questionado, nem responder às perguntas dos avaliadores.",
+      "A fala depende muito do apoio escrito; o grupo consegue explicar parte do trabalho, mas hesita ou erra em pontos importantes ao responder perguntas.",
+      "A fala é majoritariamente livre de leitura; o grupo explica o próprio trabalho com segurança na maior parte do tempo e responde à maioria das perguntas corretamente, com imprecisões pontuais.",
+      "A fala não depende de leitura; o grupo demonstra domínio pleno do próprio trabalho e responde a todas as perguntas dos avaliadores com segurança e precisão.",
+    ],
+  },
+  {
+    id: "a7",
+    grupo: "apresentacao",
+    nome: "Expressão, comunicação e originalidade",
+    valores: [0.03, 0.05, 0.07, 0.1],
+    desc: [
+      "A fala é baixa, monótona ou desorganizada a ponto de prejudicar a compreensão; sem contato com os avaliadores; a forma de apresentação é genérica, sem nenhuma escolha própria do grupo nos materiais ou no formato.",
+      "A fala é compreensível, mas volume, ritmo ou organização das ideias atrapalham parcialmente; a forma de apresentação tem poucas adaptações próprias em relação a trabalhos semelhantes da mesma área.",
+      "Fala clara e audível na maior parte do tempo, boa organização das ideias, algum contato com os avaliadores; a forma de apresentação tem escolhas próprias pontuais nos materiais ou no formato, em comparação com outros trabalhos da área.",
+      "Fala clara, audível, bem ritmada, ideias bem organizadas, contato direto com os avaliadores; a forma de apresentação se destaca pela originalidade nos materiais ou no formato, em comparação com outros trabalhos da mesma área.",
+    ],
+  },
+  {
+    id: "a8",
+    grupo: "apresentacao",
+    nome: "Tempo, presença e participação",
+    valores: [0.03, 0.05, 0.07, 0.1],
+    desc: [
+      "A apresentação ficou muito fora do intervalo de 10 a 15 minutos, ou houve ausência de mais de um integrante, ou apenas um integrante do grupo falou durante toda a apresentação, sem participação dos demais.",
+      "A apresentação ficou fora do intervalo de 10 a 15 minutos sem comprometer a exposição, ou um integrante esteve ausente, ou houve participação bem desigual dos integrantes do grupo na fala, com um deles concentrando a maior parte do tempo.",
+      "A apresentação ficou próxima do intervalo de 10 a 15 minutos, todos os integrantes estavam presentes, e a maioria dos integrantes do grupo participou da fala, com pequeno desequilíbrio entre eles.",
+      "A apresentação durou entre 10 e 15 minutos, todos os integrantes estavam presentes e pontuais, e todos os integrantes do grupo participaram ativamente da fala durante a apresentação.",
     ],
   },
 ];
+
+// rótulos e cores do agrupamento visual (banner × apresentação oral) — só
+// entra em uso quando um critério da ficha tem o campo "grupo" preenchido
+const ROTULO_GRUPO = { banner: "Banner", apresentacao: "Apresentação oral" };
 
 const ETAPAS = {
   pre: { id: "pre", nome: "Pré-projeto", criterios: FICHA_PRE },
@@ -517,12 +559,12 @@ export default function MostraJoaoPaulo() {
     }
   }
 
-  // sorteia os trabalhos de apresentação de cada avaliador cadastrado e
-  // devolve os avisos (quem ficou com menos de 3, trabalhos sem avaliador)
-  // para a tela de Resultados mostrar
-  async function distribuirApresentacao() {
+  // sorteia os trabalhos de apresentação só entre os avaliadores marcados
+  // como presentes e devolve os avisos (trabalho sem 2 avaliadores, professor
+  // com menos de 3 trabalhos) para a tela de Resultados mostrar
+  async function distribuirApresentacao(presentes) {
     try {
-      const r = await api.distribuirApresentacao();
+      const r = await api.distribuirApresentacao(presentes);
       setTrabalhos(r.trabalhos && r.trabalhos.length ? r.trabalhos : TRABALHOS_EXEMPLO);
       setAvaliadores(r.avaliadores || []);
       setAvaliacoes(r.avaliacoes || []);
@@ -945,8 +987,17 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
       </div>
 
       <div className={"pt-criterios" + (zerado ? " pt-desabilitado" : "")}>
-        {criterios.map((c, i) => (
-          <section key={c.id} className="pt-criterio">
+        {criterios.flatMap((c, i) => {
+          const els = [];
+          if (c.grupo && c.grupo !== criterios[i - 1]?.grupo) {
+            els.push(
+              <p key={"titulo-" + c.grupo} className={"pt-grupo-titulo pt-grupo-titulo-" + c.grupo}>
+                {ROTULO_GRUPO[c.grupo] || c.grupo}
+              </p>
+            );
+          }
+          els.push(
+          <section key={c.id} className={"pt-criterio" + (c.grupo ? " pt-criterio-" + c.grupo : "")}>
             <header>
               <span className="pt-num">{String(i + 1).padStart(2, "0")}</span>
               <h3>{c.nome}</h3>
@@ -985,10 +1036,12 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
                   })
                 }
               />
-              <span>O grupo não preencheu esta seção — zerar este critério (0,00)</span>
+              <span>O grupo não atendeu a este critério — zerar (0,00)</span>
             </label>
           </section>
-        ))}
+          );
+          return els;
+        })}
       </div>
 
       {temDestaque && !zerado && (
@@ -1084,7 +1137,8 @@ function Resultados({
   const [regra, setRegra] = useState("unanime");
   const [filtroSede, setFiltroSede] = useState("todas");
   const [painel, setPainel] = useState(null); // null | "trabalhos" | "avaliadores" | "prazos"
-  const [confirmandoDistribuicao, setConfirmandoDistribuicao] = useState(false);
+  const [modalDistribuicao, setModalDistribuicao] = useState(false);
+  const [presentes, setPresentes] = useState({}); // nome -> presente(true)/ausente(false), só existe com a janela aberta
   const [distribuindo, setDistribuindo] = useState(false);
   const [avisosDistribuicao, setAvisosDistribuicao] = useState(null);
   const [rascunhoPrazos, setRascunhoPrazos] = useState(config);
@@ -1095,11 +1149,29 @@ function Resultados({
     setRascunhoPrazos(config);
   }, [config]);
 
+  function abrirModalDistribuicao() {
+    const inicial = {};
+    avaliadores.forEach((av) => {
+      inicial[av.nome] = true; // todos marcados como presentes por padrão
+    });
+    setPresentes(inicial);
+    setModalDistribuicao(true);
+  }
+
+  function marcarTodos(valor) {
+    const novo = {};
+    avaliadores.forEach((av) => {
+      novo[av.nome] = valor;
+    });
+    setPresentes(novo);
+  }
+
   async function executarDistribuicao() {
     setDistribuindo(true);
-    const r = await onDistribuir();
+    const nomesPresentes = Object.keys(presentes).filter((nome) => presentes[nome]);
+    const r = await onDistribuir(nomesPresentes);
     setDistribuindo(false);
-    setConfirmandoDistribuicao(false);
+    setModalDistribuicao(false);
     setAvisosDistribuicao(r.avisos || []);
   }
 
@@ -1257,25 +1329,9 @@ function Resultados({
           >
             Prazos
           </button>
-          {!confirmandoDistribuicao ? (
-            <button className="pt-btn fino" onClick={() => setConfirmandoDistribuicao(true)}>
-              Distribuir avaliadores
-            </button>
-          ) : (
-            <span className="pt-confirmar-distribuicao">
-              <span>Sortear de novo substitui a distribuição atual. Confirma?</span>
-              <button className="pt-btn fino" onClick={executarDistribuicao} disabled={distribuindo}>
-                {distribuindo ? "Distribuindo…" : "Sim, distribuir"}
-              </button>
-              <button
-                className="pt-btn fino vazado"
-                onClick={() => setConfirmandoDistribuicao(false)}
-                disabled={distribuindo}
-              >
-                Cancelar
-              </button>
-            </span>
-          )}
+          <button className="pt-btn fino" onClick={abrirModalDistribuicao}>
+            Distribuir avaliadores
+          </button>
         </div>
       </div>
 
@@ -1283,7 +1339,7 @@ function Resultados({
         <div className="pt-cadastro">
           <p className="pt-legenda" style={{ margin: 0 }}>
             {avisosDistribuicao.length === 0
-              ? "Distribuição concluída sem pendências: todo avaliador elegível recebeu 3 trabalhos e todo trabalho recebeu ao menos um avaliador de apresentação."
+              ? "Distribuição concluída sem pendências: todo trabalho ficou com 2 avaliadores de apresentação e todo avaliador presente recebeu 3 trabalhos."
               : "Distribuição concluída com avisos:"}
           </p>
           {avisosDistribuicao.map((a, i) => (
@@ -1291,6 +1347,72 @@ function Resultados({
               {a}
             </p>
           ))}
+        </div>
+      )}
+
+      {modalDistribuicao && (
+        <div
+          className="pt-modal-fundo"
+          onClick={() => !distribuindo && setModalDistribuicao(false)}
+        >
+          <div className="pt-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="pt-modal-titulo">Quem está presente na Mostra hoje?</h3>
+            <p className="pt-legenda">
+              Marque só os professores de apresentação que estarão presentes. O sorteio distribui os
+              trabalhos somente entre eles; quem ficar desmarcado não recebe trabalhos nesta
+              distribuição.
+            </p>
+            <div className="pt-modal-acoes-topo">
+              <button className="pt-btn fino vazado" onClick={() => marcarTodos(true)}>
+                Marcar todos
+              </button>
+              <button className="pt-btn fino vazado" onClick={() => marcarTodos(false)}>
+                Desmarcar todos
+              </button>
+            </div>
+            <div className="pt-modal-lista">
+              {avaliadores.length === 0 && (
+                <p className="pt-legenda" style={{ margin: "10px" }}>
+                  Nenhum avaliador de apresentação cadastrado na planilha ainda.
+                </p>
+              )}
+              {avaliadores.map((av) => (
+                <label key={av.nome} className="pt-modal-item">
+                  <input
+                    type="checkbox"
+                    checked={!!presentes[av.nome]}
+                    onChange={(e) =>
+                      setPresentes((s) => ({ ...s, [av.nome]: e.target.checked }))
+                    }
+                  />
+                  <span>{av.nome}</span>
+                  <span className="fraco">{av.sede}</span>
+                </label>
+              ))}
+            </div>
+            <div className="pt-modal-rodape">
+              <span className="fraco">
+                {Object.values(presentes).filter(Boolean).length} de {avaliadores.length} marcados
+                como presentes
+              </span>
+              <span className="pt-modal-botoes">
+                <button
+                  className="pt-btn fino vazado"
+                  onClick={() => setModalDistribuicao(false)}
+                  disabled={distribuindo}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="pt-btn fino"
+                  onClick={executarDistribuicao}
+                  disabled={distribuindo || !Object.values(presentes).some(Boolean)}
+                >
+                  {distribuindo ? "Distribuindo…" : "Distribuir"}
+                </button>
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1334,10 +1456,13 @@ function Resultados({
         <div className="pt-cadastro">
           <p className="pt-legenda">
             Os avaliadores da apresentação vêm da aba <code>avaliadores</code> da planilha (nome, sede,
-            área e séries que a pessoa pode avaliar). O botão "Distribuir avaliadores" sorteia 3
-            trabalhos para cada um, respeitando essas colunas — ninguém avalia o que orienta. As
-            colunas do pré-projeto e do projeto são montadas sozinhas a partir de quem orienta cada
-            trabalho. Edite a planilha e clique em Atualizar.
+            área e séries que a pessoa pode avaliar). O botão "Distribuir avaliadores" abre uma janela
+            para marcar quem está presente na Mostra e sorteia os trabalhos só entre os presentes,
+            respeitando essas colunas — ninguém avalia o que orienta; garante primeiro que todo trabalho
+            tenha 2 avaliadores, e só depois tenta completar 3 trabalhos para cada avaliador presente.
+            Quem não é marcado como presente fica sem trabalhos até a próxima distribuição. As colunas
+            do pré-projeto e do projeto são montadas sozinhas a partir de quem orienta cada trabalho.
+            Edite a planilha e clique em Atualizar.
           </p>
 
           {avaliadores.length > 0 && (
@@ -1740,6 +1865,13 @@ const CSS = `
 .pt-criterio{border-top:1px solid var(--linha);padding-top:16px}
 .pt-criterio header{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .pt-criterio h3{font-size:16px;margin:0;flex:1;color:var(--azul);letter-spacing:-.01em}
+.pt-criterio-banner,.pt-criterio-apresentacao{border-top:none;border-radius:10px;padding:16px 16px 20px}
+.pt-criterio-banner{background:var(--azul-cl)}
+.pt-criterio-apresentacao{background:var(--verde-cl)}
+.pt-grupo-titulo{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  margin:6px 0 -8px;padding:6px 14px;border-radius:20px;display:inline-block;color:#fff}
+.pt-grupo-titulo-banner{background:var(--azul)}
+.pt-grupo-titulo-apresentacao{background:var(--verde)}
 .pt-num{font-family:ui-monospace,monospace;font-size:12px;font-weight:700;color:#fff;
   background:var(--azul);border-radius:5px;padding:3px 7px}
 .pt-max{font-size:11px;color:var(--texto2);letter-spacing:.06em;text-transform:uppercase;font-weight:700}
@@ -1831,8 +1963,22 @@ const CSS = `
 .pt-linha-topo{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;
   flex-wrap:wrap;margin-bottom:18px}
 .pt-controles{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.pt-confirmar-distribuicao{display:flex;gap:8px;flex-wrap:wrap;align-items:center;
-  font-size:12px;color:var(--texto2);background:var(--fundo);border-radius:8px;padding:6px 10px}
+.pt-modal-fundo{position:fixed;inset:0;background:rgba(10,25,28,.55);display:flex;
+  align-items:center;justify-content:center;z-index:100;padding:20px}
+.pt-modal{background:var(--branco);border-radius:12px;max-width:520px;width:100%;
+  max-height:86vh;display:flex;flex-direction:column;padding:24px;gap:14px;
+  box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.pt-modal-titulo{margin:0;font-size:19px;color:var(--azul);letter-spacing:-.01em}
+.pt-modal-acoes-topo{display:flex;gap:8px}
+.pt-modal-lista{overflow-y:auto;border:1px solid var(--linha);border-radius:8px;
+  padding:2px;flex:1;min-height:120px}
+.pt-modal-item{display:flex;align-items:center;gap:10px;padding:8px 10px;
+  border-bottom:1px solid var(--linha);font-size:14px;cursor:pointer}
+.pt-modal-item:last-child{border-bottom:none}
+.pt-modal-item input{width:16px;height:16px;accent-color:var(--verde);cursor:pointer;flex:none}
+.pt-modal-item span:nth-child(2){flex:1}
+.pt-modal-rodape{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.pt-modal-botoes{display:flex;gap:8px}
 
 .pt-atribuicao{display:flex;flex-direction:column;gap:8px;background:var(--fundo);
   border-radius:8px;padding:12px 14px;margin-bottom:20px;font-size:13px;color:var(--texto2)}
@@ -1928,6 +2074,9 @@ const CSS = `
   .pt-evento{border-left:none;padding-left:0}
   .pt-logo{height:34px}
   .pt-relogio{left:14px;right:14px;max-width:none;bottom:162px}
+  .pt-modal{padding:16px;max-height:92vh}
+  .pt-modal-rodape{flex-direction:column;align-items:stretch}
+  .pt-modal-botoes{justify-content:flex-end}
 }
 @media (prefers-reduced-motion:reduce){.pt *{transition:none!important}}
 `;

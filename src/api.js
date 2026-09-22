@@ -35,9 +35,10 @@ export const api = {
 
   apagarAvaliacao: (id) => chamar("apagarAvaliacao", { id }),
 
-  // sorteia os trabalhos de apresentação de cada avaliador cadastrado,
-  // respeitando sede, área e séries; devolve o pacote atualizado + avisos
-  distribuirApresentacao: () => chamar("distribuirApresentacao", {}),
+  // sorteia os trabalhos de apresentação só entre os avaliadores marcados
+  // como presentes (nomes, como cadastrados na planilha), respeitando sede,
+  // área e séries; devolve o pacote atualizado + avisos
+  distribuirApresentacao: (presentes) => chamar("distribuirApresentacao", { presentes }),
 
   // grava os prazos (prazoPre, prazoProjeto, inicioApres, fimApres) usados
   // pelo contador de cada aba de avaliação
