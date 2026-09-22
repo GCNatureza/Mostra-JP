@@ -561,7 +561,7 @@ export default function MostraJoaoPaulo() {
 
   // sorteia os trabalhos de apresentação só entre os avaliadores marcados
   // como presentes e devolve os avisos (trabalho sem 2 avaliadores, professor
-  // com menos de 3 trabalhos) para a tela de Resultados mostrar
+  // com menos do que o mínimo de trabalhos) para a tela de Resultados mostrar
   async function distribuirApresentacao(presentes) {
     try {
       const r = await api.distribuirApresentacao(presentes);
@@ -1339,7 +1339,7 @@ function Resultados({
         <div className="pt-cadastro">
           <p className="pt-legenda" style={{ margin: 0 }}>
             {avisosDistribuicao.length === 0
-              ? "Distribuição concluída sem pendências: todo trabalho ficou com 2 avaliadores de apresentação e todo avaliador presente recebeu 3 trabalhos."
+              ? "Distribuição concluída sem pendências: todo trabalho ficou com 2 avaliadores de apresentação e todo avaliador presente recebeu entre 3 e 6 trabalhos."
               : "Distribuição concluída com avisos:"}
           </p>
           {avisosDistribuicao.map((a, i) => (
@@ -1459,7 +1459,7 @@ function Resultados({
             área e séries que a pessoa pode avaliar). O botão "Distribuir avaliadores" abre uma janela
             para marcar quem está presente na Mostra e sorteia os trabalhos só entre os presentes,
             respeitando essas colunas — ninguém avalia o que orienta; garante primeiro que todo trabalho
-            tenha 2 avaliadores, e só depois tenta completar 3 trabalhos para cada avaliador presente.
+            tenha 2 avaliadores, e só depois tenta completar entre 3 e 6 trabalhos para cada avaliador presente.
             Quem não é marcado como presente fica sem trabalhos até a próxima distribuição. As colunas
             do pré-projeto e do projeto são montadas sozinhas a partir de quem orienta cada trabalho.
             Edite a planilha e clique em Atualizar.
