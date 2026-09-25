@@ -368,6 +368,14 @@ const n2 = (x) =>
     ? "—"
     : Number(x).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// aceita tanto "1,00" (padrão brasileiro) quanto "1.00" digitado no campo de
+// nota individual do aluno; string vazia ou não numérica vira NaN
+const parseNotaPtBr = (str) => {
+  if (typeof str !== "string") return NaN;
+  const limpo = str.trim().replace(",", ".");
+  return limpo === "" ? NaN : Number(limpo);
+};
+
 // um critério pode estar: sem resposta (undefined), num dos 4 níveis (0-3),
 // ou marcado como "zero" — o grupo não preencheu aquela seção do trabalho
 const valorCriterio = (c, v) => (v === "zero" || v === undefined ? 0 : c.valores[v]);
@@ -394,6 +402,21 @@ function listaIntegrantes(t) {
 }
 
 const mesmoNome = (a, b) => (a || "").trim().toLowerCase() === (b || "").trim().toLowerCase();
+
+// nota final de um aluno numa etapa: média das notas que cada avaliador deu
+// especificamente a esse aluno (campo notasAlunos da avaliação, preenchido
+// na tela de revisão). Quando o avaliador não personalizou a nota desse
+// aluno — ou a avaliação é de antes desse recurso existir — cai de volta
+// para o total da ficha, igual valeria para todo o grupo antes disso existir
+function notaAluno(dadosEtapa, nomeAluno) {
+  if (!dadosEtapa || !dadosEtapa.lista.length) return null;
+  const vals = dadosEtapa.lista.map((a) => {
+    if (a.zerado) return 0;
+    const item = (a.notasAlunos || []).find((n) => mesmoNome(n.nome, nomeAluno));
+    return item && Number.isFinite(item.nota) ? item.nota : a.total;
+  });
+  return media(vals);
+}
 
 const ordenaPtBr = (a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base", numeric: true });
 
@@ -560,11 +583,11 @@ export default function MostraJoaoPaulo() {
   }
 
   // sorteia os trabalhos de apresentação só entre os avaliadores marcados
-  // como presentes e devolve os avisos (trabalho sem 2 avaliadores, professor
-  // com menos do que o mínimo de trabalhos) para a tela de Resultados mostrar
-  async function distribuirApresentacao(presentes) {
+  // como presentes e devolve os avisos (só o de trabalho com menos de 2
+  // avaliadores) para a tela de Resultados mostrar
+  async function distribuirApresentacao(presentes, min, max) {
     try {
-      const r = await api.distribuirApresentacao(presentes);
+      const r = await api.distribuirApresentacao(presentes, min, max);
       setTrabalhos(r.trabalhos && r.trabalhos.length ? r.trabalhos : TRABALHOS_EXEMPLO);
       setAvaliadores(r.avaliadores || []);
       setAvaliacoes(r.avaliacoes || []);
@@ -684,6 +707,7 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
   const [tela, setTela] = useState("form"); // form | revisao | enviado
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [notasAlunos, setNotasAlunos] = useState({}); // nome do aluno -> nota (string), só na revisão
 
   const criterios = etapa.criterios;
   const temDestaque = etapa.id === "apres";
@@ -726,6 +750,14 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
       avaliador.trim() !== ""
   );
 
+  // integrantes do trabalho atual, para a lista de notas individuais na
+  // revisão — cada um pode ter uma nota diferente da nota geral da ficha
+  const alunosDoTrabalho = trabalho ? listaIntegrantes(trabalho) : [];
+  const notasAlunosValores = alunosDoTrabalho.map((al) => parseNotaPtBr(notasAlunos[al.nome]));
+  const notaAlunoInvalida = notasAlunosValores.some(
+    (v) => Number.isNaN(v) || v < 0 || v > maximo
+  );
+
   function limpar() {
     setNumero("");
     setNotas({});
@@ -734,6 +766,7 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
     setZerado(false);
     setTela("form");
     setErro("");
+    setNotasAlunos({});
   }
 
   function revisar() {
@@ -748,10 +781,19 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
       if (temDestaque && destaque === null) return setErro("Indique se o trabalho merece destaque.");
     }
     setErro("");
+    // toda vez que entra na revisão, a nota individual de cada integrante
+    // começa igual à nota da ficha — o avaliador só mexe se achar necessário
+    const notaInicial = n2(zerado ? 0 : total);
+    const inicial = {};
+    (trabalho ? listaIntegrantes(trabalho) : []).forEach((al) => {
+      inicial[al.nome] = notaInicial;
+    });
+    setNotasAlunos(inicial);
     setTela("revisao");
   }
 
   async function confirmar() {
+    if (!zerado && notaAlunoInvalida) return;
     setEnviando(true);
     const ok = await onEnviar({
       id: "av" + Date.now() + Math.floor(Math.random() * 999),
@@ -764,6 +806,15 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
       zerado,
       comentario: comentario.trim(),
       destaque: zerado ? false : temDestaque ? destaque : false,
+      // nota individual de cada integrante — por padrão igual à nota da
+      // ficha, mas o avaliador pode ter mudado alguma na revisão; zerado
+      // não tem lista (a ficha inteira já é 0,00 para todos)
+      notasAlunos: zerado
+        ? []
+        : alunosDoTrabalho.map((al) => ({
+            nome: al.nome,
+            nota: parseNotaPtBr(notasAlunos[al.nome]),
+          })),
       em: new Date().toISOString(),
     });
     setEnviando(false);
@@ -841,6 +892,41 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
             <p>{destaque ? "Sim — indicado para premiação" : "Não indicado"}</p>
           </div>
         )}
+
+        {!zerado && alunosDoTrabalho.length > 0 && (
+          <div className="pt-rev-bloco">
+            <span className="pt-rotulo">Notas por aluno</span>
+            <p className="pt-legenda" style={{ margin: "4px 0 8px" }}>
+              Por padrão todos os integrantes recebem a nota da ficha ({n2(total)}). Mude o valor de
+              quem precisar de uma nota diferente.
+            </p>
+            <div className="pt-alunos-notas">
+              {alunosDoTrabalho.map((al) => {
+                const valor = parseNotaPtBr(notasAlunos[al.nome]);
+                const invalida = Number.isNaN(valor) || valor < 0 || valor > maximo;
+                return (
+                  <div key={al.nome} className="pt-aluno-nota">
+                    <span>{al.nome}</span>
+                    <input
+                      className={"pt-entrada" + (invalida ? " pt-entrada-erro" : "")}
+                      value={notasAlunos[al.nome] ?? ""}
+                      onChange={(e) =>
+                        setNotasAlunos((s) => ({ ...s, [al.nome]: e.target.value }))
+                      }
+                      inputMode="decimal"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            {notaAlunoInvalida && (
+              <p className="pt-alerta" style={{ margin: "6px 0 0" }}>
+                Alguma nota de aluno está inválida — use vírgula ou ponto, entre 0,00 e {n2(maximo)}.
+              </p>
+            )}
+          </div>
+        )}
+
         <div className="pt-rev-bloco">
           <span className="pt-rotulo">Comentários{zerado ? " (motivo da nota zero)" : ""}</span>
           <p>{comentario.trim() || "(sem comentários)"}</p>
@@ -856,7 +942,11 @@ function Ficha({ etapa, sede, trabalhos, avaliacoes, avaliadores, avaliador, set
           <button className="pt-btn vazado" onClick={() => setTela("form")}>
             Voltar e corrigir
           </button>
-          <button className="pt-btn" onClick={confirmar} disabled={enviando}>
+          <button
+            className="pt-btn"
+            onClick={confirmar}
+            disabled={enviando || (!zerado && notaAlunoInvalida)}
+          >
             {enviando ? "Enviando…" : "Confirmar e enviar avaliação"}
           </button>
         </div>
@@ -1139,6 +1229,8 @@ function Resultados({
   const [painel, setPainel] = useState(null); // null | "trabalhos" | "avaliadores" | "prazos"
   const [modalDistribuicao, setModalDistribuicao] = useState(false);
   const [presentes, setPresentes] = useState({}); // nome -> presente(true)/ausente(false), só existe com a janela aberta
+  const [cotaMin, setCotaMin] = useState("3"); // mínimo de trabalhos por avaliador presente
+  const [cotaMax, setCotaMax] = useState("6"); // máximo de trabalhos por avaliador presente
   const [distribuindo, setDistribuindo] = useState(false);
   const [avisosDistribuicao, setAvisosDistribuicao] = useState(null);
   const [rascunhoPrazos, setRascunhoPrazos] = useState(config);
@@ -1166,10 +1258,17 @@ function Resultados({
     setPresentes(novo);
   }
 
+  const cotaMinNum = parseInt(cotaMin, 10);
+  const cotaMaxNum = parseInt(cotaMax, 10);
+  const cotaValida =
+    Number.isInteger(cotaMinNum) && cotaMinNum >= 1 &&
+    Number.isInteger(cotaMaxNum) && cotaMaxNum >= cotaMinNum;
+
   async function executarDistribuicao() {
+    if (!cotaValida) return;
     setDistribuindo(true);
     const nomesPresentes = Object.keys(presentes).filter((nome) => presentes[nome]);
-    const r = await onDistribuir(nomesPresentes);
+    const r = await onDistribuir(nomesPresentes, cotaMinNum, cotaMaxNum);
     setDistribuindo(false);
     setModalDistribuicao(false);
     setAvisosDistribuicao(r.avisos || []);
@@ -1232,13 +1331,18 @@ function Resultados({
       });
     });
     alunos.sort((a, b) => ordenaPtBr(a.turma, b.turma) || ordenaPtBr(a.nome, b.nome));
-    const corpo = alunos.map(({ turma, nome, linha: l }) => [
-      l.sede, turma, nome, l.num, l.titulo, l.orientador || "",
-      l.pre.media === null ? "" : n2(l.pre.media),
-      l.projeto.media === null ? "" : n2(l.projeto.media),
-      l.apres.media === null ? "" : n2(l.apres.media),
-      l.consenso ? "SIM" : "",
-    ]);
+    const corpo = alunos.map(({ turma, nome, linha: l }) => {
+      const npre = notaAluno(l.pre, nome);
+      const nprojeto = notaAluno(l.projeto, nome);
+      const napres = notaAluno(l.apres, nome);
+      return [
+        l.sede, turma, nome, l.num, l.titulo, l.orientador || "",
+        npre === null ? "" : n2(npre),
+        nprojeto === null ? "" : n2(nprojeto),
+        napres === null ? "" : n2(napres),
+        l.consenso ? "SIM" : "",
+      ];
+    });
     baixaArquivo(cab, corpo, "mostra-joao-paulo-notas-por-aluno.csv");
   }
 
@@ -1339,7 +1443,7 @@ function Resultados({
         <div className="pt-cadastro">
           <p className="pt-legenda" style={{ margin: 0 }}>
             {avisosDistribuicao.length === 0
-              ? "Distribuição concluída sem pendências: todo trabalho ficou com 2 avaliadores de apresentação e todo avaliador presente recebeu entre 3 e 6 trabalhos."
+              ? `Distribuição concluída sem pendências: todo trabalho ficou com 2 avaliadores de apresentação e todo avaliador presente recebeu entre ${cotaMinNum} e ${cotaMaxNum} trabalhos.`
               : "Distribuição concluída com avisos:"}
           </p>
           {avisosDistribuicao.map((a, i) => (
@@ -1362,6 +1466,33 @@ function Resultados({
               trabalhos somente entre eles; quem ficar desmarcado não recebe trabalhos nesta
               distribuição.
             </p>
+            <div className="pt-modal-cota">
+              <label>
+                <span>Mínimo de trabalhos por avaliador</span>
+                <input
+                  className="pt-entrada estreita"
+                  type="number"
+                  min="1"
+                  value={cotaMin}
+                  onChange={(e) => setCotaMin(e.target.value)}
+                />
+              </label>
+              <label>
+                <span>Máximo de trabalhos por avaliador</span>
+                <input
+                  className="pt-entrada estreita"
+                  type="number"
+                  min="1"
+                  value={cotaMax}
+                  onChange={(e) => setCotaMax(e.target.value)}
+                />
+              </label>
+            </div>
+            {!cotaValida && (
+              <p className="pt-alerta" style={{ margin: 0 }}>
+                Informe um mínimo de pelo menos 1 e um máximo maior ou igual ao mínimo.
+              </p>
+            )}
             <div className="pt-modal-acoes-topo">
               <button className="pt-btn fino vazado" onClick={() => marcarTodos(true)}>
                 Marcar todos
@@ -1406,7 +1537,7 @@ function Resultados({
                 <button
                   className="pt-btn fino"
                   onClick={executarDistribuicao}
-                  disabled={distribuindo || !Object.values(presentes).some(Boolean)}
+                  disabled={distribuindo || !cotaValida || !Object.values(presentes).some(Boolean)}
                 >
                   {distribuindo ? "Distribuindo…" : "Distribuir"}
                 </button>
@@ -1457,12 +1588,13 @@ function Resultados({
           <p className="pt-legenda">
             Os avaliadores da apresentação vêm da aba <code>avaliadores</code> da planilha (nome, sede,
             área e séries que a pessoa pode avaliar). O botão "Distribuir avaliadores" abre uma janela
-            para marcar quem está presente na Mostra e sorteia os trabalhos só entre os presentes,
-            respeitando essas colunas — ninguém avalia o que orienta; garante primeiro que todo trabalho
-            tenha 2 avaliadores, e só depois tenta completar entre 3 e 6 trabalhos para cada avaliador presente.
-            Quem não é marcado como presente fica sem trabalhos até a próxima distribuição. As colunas
-            do pré-projeto e do projeto são montadas sozinhas a partir de quem orienta cada trabalho.
-            Edite a planilha e clique em Atualizar.
+            para marcar quem está presente na Mostra e informar o mínimo e o máximo de trabalhos por
+            avaliador (3 e 6 por padrão), e sorteia os trabalhos só entre os presentes, respeitando essas
+            colunas — ninguém avalia o que orienta; garante primeiro que todo trabalho tenha 2
+            avaliadores, e só depois tenta completar a cota de cada avaliador presente dentro da faixa
+            informada. Quem não é marcado como presente fica sem trabalhos até a próxima distribuição. As
+            colunas do pré-projeto e do projeto são montadas sozinhas a partir de quem orienta cada
+            trabalho. Edite a planilha e clique em Atualizar.
           </p>
 
           {avaliadores.length > 0 && (
@@ -1673,8 +1805,11 @@ function Resultados({
         Cada etapa (pré-projeto, projeto e apresentação) vale 1,00 e é calculada separadamente: quando
         há mais de um avaliador, a nota da etapa é a média entre eles. As três etapas não são somadas
         entre si. A indicação de destaque é feita apenas na ficha da apresentação, e o prêmio aparece
-        quando há consenso entre os avaliadores dessa etapa. Clique em uma linha para ver as notas por
-        critério e os comentários.
+        quando há consenso entre os avaliadores dessa etapa. Por padrão, todo integrante do grupo recebe
+        a mesma nota da ficha, mas o avaliador pode ajustar a nota de um aluno específico na tela de
+        revisão antes de enviar — o CSV por aluno e o detalhe de cada trabalho já usam essa nota
+        individual quando ela existe. Clique em uma linha para ver as notas por critério, por aluno e os
+        comentários.
       </p>
     </div>
   );
@@ -1756,6 +1891,52 @@ function Detalhe({ linha, onApagar }) {
                 </tr>
               </tbody>
             </table>
+
+            {listaIntegrantes(linha).length > 0 && (
+              <>
+                <span className="pt-rotulo" style={{ display: "block", margin: "12px 0 6px" }}>
+                  Notas por aluno
+                </span>
+                <table className="pt-tabela compacta">
+                  <thead>
+                    <tr>
+                      <th>Aluno</th>
+                      {dados.lista.map((a) => (
+                        <th key={a.id} className="dir">
+                          {a.avaliador.split(" ")[0]}
+                        </th>
+                      ))}
+                      <th className="dir">Nota final</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {listaIntegrantes(linha).map((al) => (
+                      <tr key={al.nome}>
+                        <td>{al.nome}</td>
+                        {dados.lista.map((a) => {
+                          if (a.zerado)
+                            return (
+                              <td key={a.id} className="dir mono">
+                                <span className="pt-zero-mini">zerado</span>
+                              </td>
+                            );
+                          const item = (a.notasAlunos || []).find((n) => mesmoNome(n.nome, al.nome));
+                          const valor = item && Number.isFinite(item.nota) ? item.nota : a.total;
+                          const personalizada =
+                            item && Number.isFinite(item.nota) && Math.abs(item.nota - a.total) > 0.001;
+                          return (
+                            <td key={a.id} className={"dir mono" + (personalizada ? " forte" : "")}>
+                              {n2(valor)}
+                            </td>
+                          );
+                        })}
+                        <td className="dir mono forte">{n2(notaAluno(dados, al.nome))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
 
             <div className="pt-comentarios">
               {dados.lista.map((a) => (
@@ -1946,6 +2127,12 @@ const CSS = `
 .pt-nivel.zero{background:#FBEAE8;color:var(--erro)}
 .pt-rev-bloco{margin-bottom:14px}
 .pt-rev-bloco p{margin:4px 0 0;font-size:14px;white-space:pre-wrap}
+.pt-alunos-notas{display:flex;flex-direction:column;gap:8px}
+.pt-aluno-nota{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  background:var(--fundo);border-radius:7px;padding:8px 12px;font-size:14px}
+.pt-aluno-nota input{width:78px;margin:0;padding:7px 8px;text-align:center;
+  font-family:ui-monospace,monospace}
+.pt-entrada-erro{border-color:var(--erro)!important;color:var(--erro)}
 .pt-acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
 .pt-acoes .pt-btn{flex:1;min-width:180px}
 
@@ -1969,6 +2156,9 @@ const CSS = `
   max-height:86vh;display:flex;flex-direction:column;padding:24px;gap:14px;
   box-shadow:0 20px 60px rgba(0,0,0,.3)}
 .pt-modal-titulo{margin:0;font-size:19px;color:var(--azul);letter-spacing:-.01em}
+.pt-modal-cota{display:flex;gap:14px;flex-wrap:wrap}
+.pt-modal-cota label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--texto2)}
+.pt-modal-cota input{width:90px}
 .pt-modal-acoes-topo{display:flex;gap:8px}
 .pt-modal-lista{overflow-y:auto;border:1px solid var(--linha);border-radius:8px;
   padding:2px;flex:1;min-height:120px}

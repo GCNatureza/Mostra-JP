@@ -37,8 +37,11 @@ export const api = {
 
   // sorteia os trabalhos de apresentação só entre os avaliadores marcados
   // como presentes (nomes, como cadastrados na planilha), respeitando sede,
-  // área e séries; devolve o pacote atualizado + avisos
-  distribuirApresentacao: (presentes) => chamar("distribuirApresentacao", { presentes }),
+  // área e séries; min/max definem a faixa de trabalhos por avaliador (o
+  // servidor cai para os padrões do Codigo.gs se vierem vazios/inválidos);
+  // devolve o pacote atualizado + avisos
+  distribuirApresentacao: (presentes, min, max) =>
+    chamar("distribuirApresentacao", { presentes, min, max }),
 
   // grava os prazos (prazoPre, prazoProjeto, inicioApres, fimApres) usados
   // pelo contador de cada aba de avaliação
