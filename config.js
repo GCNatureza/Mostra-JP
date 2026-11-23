@@ -1,4 +1,4 @@
 /* Endereço do app da web do Apps Script (termina em /exec). */
 window.CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbytcu50XBk6jcDP5LV1Q_MwUgk9oTgArkHNHa2LOVO6ycNJVYqQ4IoNnfbcukBA4P2v/exec",
+  API_URL: "https://script.google.com/macros/s/AKfycbzixjSdTufmLzQTBBWZCun9FKke2NzIKQcRfnlUn9ItrmZoK94EKOHcJTzmGa3sNTB_/exec",
 };
